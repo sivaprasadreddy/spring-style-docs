@@ -1,0 +1,411 @@
+== A Quick Tour of Spring Framework Core Concepts
+Spring Boot is an opinionated and convention over configuration based approach to building Spring powered applications.
+So, all the Spring framework core concepts are still applicable in Spring Boot.
+
+[TIP]
+====
+If you are familiar with the Spring framework, feel free to skip this chapter.
+====
+
+In this chapter, we will take a quick tour of some of the Spring framework core concepts.
+
+=== Dependency Injection
+One of the key concepts of the Spring framework is Dependency Injection (DI).
+
+Dependency Injection is a design pattern that promotes loose coupling by externalizing the construction and
+injection of an object's dependencies. This makes the system more modular, testable, and easier to maintain.
+
+For example, consider the following class:
+
+[source,java]
+----
+public class UserService {
+    private final UserRepository userRepository;
+
+    // Constructor Injection
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    // methods using userRepository
+}
+----
+
+In the above example, the `UserService` class is dependent on the `UserRepository` class.
+The `UserRepository` is injected into the `UserService` class using constructor injection.
+
+Instead of creating the `UserRepository` object inside the `UserService` class,
+the `UserRepository` object is injected into the `UserService` class from the outside.
+Typically, the `UserRepository` object is constructed and injected by the Spring framework.
+
+With this approach, we can replace the `UserRepository` object with a mock object for testing purposes.
+This enables loose coupling and makes the system more modular and testable.
+
+Spring provides different ways to achieve Dependency Injection:
+
+- *Constructor Injection (recommended)*
+
+Constructor injection is the most recommended way to inject dependencies in Spring.
+All the required dependencies are passed as constructor arguments.
+If there is only one constructor, the `@Autowired` annotation is optional.
+
+[source,java]
+----
+public class UserService {
+    private final UserRepository userRepository;
+
+    @Autowired
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    // ...
+}
+----
+
+- *Setter Injection*
+
+Setter injection is another way to inject dependencies in Spring.
+We can use the `@Autowired` annotation on the setter method to inject the dependency.
+This approach is not recommended because it makes the class mutable and can lead to inconsistent states.
+
+[source,java]
+----
+public class UserService {
+    private UserRepository userRepository;
+
+    @Autowired
+    public setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    // ...
+}
+----
+
+- *Field Injection (not recommended)*
+
+The field injection is the least recommended way to inject dependencies in Spring.
+We can use the `@Autowired` annotation on the field to inject the dependency.
+This approach is not recommended because it makes the class tightly coupled and hard to test.
+But usually, field injection is used in the tests to inject the dependencies.
+
+[source,java]
+----
+public class UserService {
+    @Autowired
+    private UserRepository userRepository;
+
+    // ...
+}
+----
+
+=== Bean Registration
+To let the Spring framework manage the lifecycle of an object, we need to register the class as a bean.
+Spring framework supports several ways to register beans:
+
+- XML Configuration (legacy approach, not being used in modern applications)
+- Annotation-based Configuration
+- Java Configuration
+
+==== Annotation-based Configuration
+In the annotation-based configuration, we can use the `@Component` annotation to register a class as a Spring bean.
+For example:
+
+[source,java]
+----
+@Component
+public class UserRepository {
+
+    // methods
+}
+----
+
+[source,java]
+----
+@Component
+public class UserService {
+    private final UserRepository userRepository;
+
+    @Autowired
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    // methods using userRepository
+}
+----
+
+In the above example, the `UserRepository` and `UserService` classes are registered as Spring beans using the `@Component` annotation.
+The `@Autowired` annotation is used to inject the `UserRepository` object into the `UserService` class.
+But, if there is only one constructor in the class, the `@Autowired` annotation is optional.
+
+The `@Component` annotation is a generic stereotype for any Spring-managed component.
+We can also use more specific annotations like `@Service`, `@Repository`, and `@Controller` to register beans.
+
+- `@Controller` — for classes that handle HTTP requests
+- `@Service` — for classes which perform business logic as a unit of work
+- `@Repository` — for classes that access the database
+
+==== Java Configuration
+In the Java configuration based approach, we can use the `@Configuration` annotation to define a class as a configuration class.
+We can use the `@Bean` annotation to register a method as a bean.
+For example:
+
+[source,java]
+----
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public UserRepository userRepository() {
+        return new UserRepository();
+    }
+
+    @Bean
+    public UserService userService(UserRepository userRepository) {
+        return new UserService(userRepository);
+    }
+}
+----
+
+In the above example, the `AppConfig` class is defined as a configuration class using the `@Configuration` annotation.
+The `userRepository` and `userService` methods are registered as beans using the `@Bean` annotation.
+When the application starts, the Spring IoC container will create and manage the `UserRepository` and `UserService` beans.
+
+While we can follow Java configuration for our own code too,
+this approach is commonly used for registering beans from third-party libraries.
+We can combine both annotation-based and Java configuration in the same application.
+
+=== Bean Scopes
+In the Spring Framework, a bean is an object that is managed by the Spring IoC container.
+Bean scopes define the lifecycle and visibility of a bean within the container.
+Spring supports several bean scopes, each serving different purposes.
+Here are the main Spring bean scopes:
+
+- *Singleton(default):*
+* a single instance of the bean is created for the entire application context.
+* It is the default scope for a Spring bean.
+* The same bean instance is returned whenever the bean is requested.
+
+- *Prototype:*
+* In the prototype scope, a new bean instance is created every time it is requested.
+* It is suitable for stateful beans where a new instance is needed for each client or usage.
+
+- *Request:*
+* The request scope is specific to web applications and creates a new bean instance for each HTTP request.
+* Suitable for beans that store temporary data related to a specific HTTP request.
+* It is available only in a web-aware Spring ApplicationContext.
+
+- *Session:*
+* Similar to request scope, the session scope is specific to web applications and creates a new bean instance for each HTTP session.
+* Suitable for beans that store temporary data related to a specific user session.
+* Like request scope, it is available only in a web-aware Spring ApplicationContext.
+
+- *Application:*
+* The application scope is specific to web applications and creates a single bean instance for the entire ServletContext.
+
+- *WebSocket:*
+* The WebSocket scope is specific to web applications and creates a new bean instance for each WebSocket session.
+
+[TIP]
+====
+*Singleton Beans with Prototype-bean Dependencies*
+
+When we use singleton-scoped beans with dependencies on prototype beans, be aware that dependencies are resolved
+at instantiation time. Thus, if we inject a prototype-scoped bean into a singleton-scoped bean,
+a new prototype bean is instantiated and then dependency-injected into the singleton bean.
+The prototype instance is the sole instance ever supplied to the singleton-scoped bean.
+
+If we need to inject a new prototype instance into the singleton bean at runtime,
+consider using https://docs.spring.io/spring-framework/reference/core/beans/dependencies/factory-method-injection[Method Injection].
+====
+
+For example, consider the following bean registration with different scopes:
+
+[source,java]
+----
+@Configuration
+public class AppConfig {
+
+    @Bean
+    @Scope("prototype")
+    public UserRepository userRepository() {
+        return new UserRepository();
+    }
+
+    @Bean
+    @Scope("singleton")
+    public UserService userService(UserRepository userRepository) {
+        return new UserService(userRepository);
+    }
+}
+----
+
+In the above example, the `userRepository` bean is registered with the *prototype* scope,
+and the `userService` bean is registered with the *singleton* scope.
+
+[source,java]
+----
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class MyApp {
+    public static void main(String[] args) {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.register(AppConfig.class);
+        ctx.refresh();
+
+        UserService svc1 = ctx.getBean(UserService.class);
+        System.out.println(svc1.hashCode()); //123456
+        UserService svc2 = ctx.getBean(UserService.class); // each time it will return the same instance
+        System.out.println(svc2.hashCode()); //123456
+
+        UserRepository repo1 = ctx.getBean(UserRepository.class);
+        System.out.println(repo1.hashCode()); //7890123
+        UserRepository repo2 = ctx.getBean(UserRepository.class); // each time it will return a new instance
+        System.out.println(repo2.hashCode()); //5768493
+
+        // However, UserService will hold the same instance of UserRepository dependency
+        UserService svc3 = ctx.getBean(UserService.class);
+        System.out.println(svc3.hashCode()); //123456
+        System.out.println(svc3.getUserRepository().hashCode()); //567890
+        UserService svc4 = ctx.getBean(UserService.class);
+        System.out.println(svc4.hashCode()); //123456
+        System.out.println(svc4.getUserRepository().hashCode()); //567890
+
+        ctx.close();
+    }
+}
+----
+
+Understanding the bean scopes is crucial for effective bean management and resource utilization.
+
+=== Bean Lifecycle Callbacks
+In Spring, the lifecycle of a bean involves several phases, and Spring provides ways to hook into these phases
+through lifecycle callback methods.
+These methods allow us to perform custom actions during the initialization, and destruction of a bean.
+The two main types of lifecycle callbacks in Spring are initialization callbacks and destruction callbacks.
+
+We can use the JSR-250 annotations `@PostConstruct` and `@PreDestroy` to define
+the initialization and destruction callbacks as follows:
+
+[source,java]
+----
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+
+@Component
+public class SampleBean {
+
+    @PostConstruct
+    public void init() {
+        System.out.println("initialization logic");
+    }
+
+    @PreDestroy
+    public void destroy() {
+        System.out.println("clean up logic");
+    }
+}
+----
+
+While using Java configuration, we can use the `@Bean` annotation to define the initialization and destruction callbacks as follows:
+
+[source,java]
+----
+@Configuration
+public class AppConfig {
+
+    @Bean(initMethod = "init", destroyMethod = "destroy")
+    public SampleBean sampleBean() {
+        return new SampleBean();
+    }
+}
+----
+
+We can also use the `InitializingBean` and `DisposableBean` interfaces to define the initialization and destruction callbacks.
+
+[source,java]
+----
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
+
+@Component
+public class SampleBean implements InitializingBean, DisposableBean {
+
+    @Override
+	public void afterPropertiesSet() {
+        System.out.println("initialization logic");
+    }
+
+    @Override
+	public void destroy() {
+        System.out.println("clean up logic");
+    }
+}
+----
+
+[TIP]
+====
+Using the `@PostConstruct` and `@PreDestroy` annotations are recommended for implementing lifecycle callbacks
+in a modern Spring application.
+Using `InitializingBean`, `DisposableBean` will couple our code to Spring-specific interfaces.
+====
+
+=== Aspect Oriented Programming (AOP)
+Aspect-Oriented Programming (AOP) is a programming paradigm that aims to increase modularity by allowing
+the separation of cross-cutting concerns. Cross-cutting concerns are aspects of a program that affect multiple modules
+or components, such as logging, security, and transaction management.
+AOP provides a way to modularize these concerns, making code more maintainable and less redundant.
+
+In Spring Framework, AOP is used to separate concerns from the main business logic of an application.
+Spring AOP is implemented using proxy patterns and allows us to define aspects (modules encapsulating cross-cutting concerns)
+that can be applied to different parts of our application.
+
+Here are some key concepts in Spring AOP:
+
+- *Aspect:* An aspect is a module that encapsulates a cross-cutting concern. It contains advice and can also include pointcuts
+and other configurations. Examples of aspects include logging, transaction management, and security.
+
+- *Advice:* Advice is the action taken by an aspect at a particular join point.
+It represents the code that runs when a certain condition is met.
+Types of advice in Spring AOP include "before," "after," "around," "after returning," and "after throwing."
+
+- *JoinPoint:* A join point is a point during the execution of a program where an aspect's advice can be applied.
+In Spring AOP, join points are typically method executions.
+
+- *Pointcut:* A pointcut is a set of one or more join points where advice should be executed.
+It defines a condition for matching join points.
+Pointcuts enable us to specify where in our codebase an aspect's advice should be applied.
+
+- *AspectJ Annotation Support:* Spring AOP supports AspectJ-style annotations for defining aspects, advice, and pointcuts.
+Annotations like `@Aspect`, `@Before`, `@After`, and `@Around` make it easier to define aspects
+in a more concise and readable manner.
+
+Here's a simple example to illustrate Spring AOP:
+
+[source,java]
+----
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.springframework.stereotype.Component;
+
+@Aspect
+@Component
+public class LoggingAspect {
+
+    @Before("execution(* com.example.service.*.*(..))")
+    public void logBeforeMethodExecution() {
+        System.out.println("Logging: Method is about to be executed");
+    }
+}
+----
+
+In this example, the `LoggingAspect` class defines an aspect with a `@Before` advice that will be executed
+before the execution of any method in the `com.example.service` package.
+
+=== Summary
+In this chapter, we took a quick tour of the Spring framework core concepts.
+We learned about *Dependency Injection*, *Bean Registration*, *Bean Scopes*, **Bean Lifecycle Callbacks**
+and *Aspect-Oriented Programming (AOP)*.
+These concepts are fundamental to understanding the Spring framework and are still valid in Spring Boot.

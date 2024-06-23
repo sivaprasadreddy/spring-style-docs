@@ -1,0 +1,362 @@
+
+== Introduction to Spring Boot
+*Spring Boot* is the most popular framework for building applications in the Java world.
+It is an *Opinionated* and *Convention Over Configuration* based approach to building Spring framework based applications.
+
+Using Spring Boot, we can build different kinds of applications such as *monolithic applications,
+microservices, serverless applications, Batch processing applications*, etc.
+
+Let us take a quick look at what are the key features of Spring Boot that made it so popular.
+
+=== Spring Boot Key Features
+
+==== Auto Configuration
+
+Spring Boot takes an opinionated view of the application and auto-configures various components(a.k.a beans)
+based on the default conventions without requiring us to configure everything explicitly.
+However, we can customize or override the bean configurations in various ways if required.
+
+For example, if we add `spring-boot-starter-data-jpa` starter then *Hibernate* dependencies will be added as
+the JPA implementation because it is the most commonly used JPA provider.
+Also, Spring Boot tries to auto-configure the components required for using Spring Data Jpa
+such as `DataSource`, `EntityManagerFactory`, `PlatformTransactionManager` etc.
+If there is an in-memory JDBC driver in the classpath like *H2* or *HSQL* then Spring Boot
+will auto-configure the *DataSource* with in-memory settings.
+
+If we want to use any non in-memory databases like *MySQL*, *Postgresql* etc then
+we can add the respective JDBC driver jar and configure the JDBC connection parameters
+in `application.properties` file. Then Spring Boot will use those properties to configure
+`DataSource` bean as opposed to using default in-memory database.
+We can even configure a DataSource bean by ourselves using `@Bean` annotation then
+Spring Boot will backoff and use the `DataSource` bean configured by us instead of auto-configuring it.
+
+With Spring Boot's auto-configuration, the complexity of configuring a Spring application is greatly simplified.
+
+==== Convention Over Configuration
+Spring Boot relies upon various default conventions so that it can auto-configure the application.
+
+For example, in plain Spring based applications, we use configuration properties
+by registering the `PropertySourcesPlaceholderConfigurer` bean.
+In Spring Boot application, we can put our configuration properties in `src/main/resources/application.properties` file
+and Spring Boot will automatically register `PropertySourcesPlaceholderConfigurer` bean loading
+the properties from that file. We don't have to explicitly specify the properties file name.
+
+Similarly, we might want to configure different values for properties based on the environment
+(*dev, qa, staging, prod*) our application is running. We can configure our configuration properties in
+`application-{profile}.properties` where profile name can be *dev, qa, staging* and *prod*.
+Then we just need to enable the desired profile for Spring Boot to read values from that
+specific profile properties file.
+
+Spring Boot is very flexible to customize those conventions based on our project needs and preferences.
+
+==== Dependency Version Management
+
+Typically, Spring Boot applications inherit from `spring-boot-starter-parent` which is configured with
+all the compatible library versions so that we don't have to hunt for checking which library version
+is compatible with which version of Spring.
+We can check `pom.xml` of `org.springframework.boot:spring-boot-dependencies` module to see
+what are all the libraries pre-configured.
+
+==== Production-Ready Monitoring Capabilities
+
+Monitoring is an important aspect of any application running in production. Spring Boot provides
+production ready monitoring capabilities via Actuator.
+We can get the application runtime information like *Memory usage, Disk Space, HealthCheck of
+various components* etc via Actuator REST endpoints.
+Actuator uses *Micrometer* under-the-hood which we can use to export all those application metrics
+to various monitoring services like *Prometheus, Datadog, Influx* etc.
+
+==== Embedded Servers Support
+
+Traditionally, Java based web applications are built as *war* files and then deployed on a servlet containers
+or application servers like *Tomcat, Wildfly, WebSphere* etc.
+The modern approach is to embed the server runtime within the application itself so that
+we can take the artifact(jar) and run it without having to install and configure server externally.
+
+Spring Boot provides support for embedding servlet containers like *Tomcat, Jetty, Undertow,*
+and we can customize various server properties in server-independent way.
+Spring Boot provides various server-specific customization properties as well.
+
+==== Spring Ecosystem
+
+Spring Boot has a huge ecosystem of projects to support wide verity of application types.
+
+* *SpringMVC & Spring WebFlux*: We can build traditional web applications and REST APIs using
+*SpringMVC* or non-blocking reactive applications using *Spring WebFlux*.
+* *Spring Data*: Spring Data provides high-level abstraction over ORM and NoSQL data access libraries
+so that we don't need to implement boilerplate CRUD operations again and again.
+* *Spring Security*: We can implement Authentication and Authorization using Spring Security.
+It also supports implementing *OAuth 2.0* based security.
+* *Spring Batch*: We can build robust batch applications using SpringBatch.
+* *Spring Integration*: Spring Integration implements many of the *Enterprise Integration Patterns*
+which we can use for integration with 3rd party services.
+* *Spring Cloud*: Spring Cloud provides support for building Cloud Native applications following
+https://12factor.net/[12 Factor Application] principles
+* *Spring Cloud Streams*: We can build Data Pipelines for processing Stream based Data Sources like Kafka.
+
+And, there are many more interesting projects. See https://spring.io/projects for more Spring ecosystem projects.
+
+Okay, that's enough of theory. Let's get our hands dirty by doing the mandatory ritual :-)
+
+Yes, you guessed it right. We are going to build a HelloWorld application using Spring Boot and
+explore some of its features.
+
+=== Getting Started with Spring Boot
+
+Spring Boot applications can be created either using https://start.spring.io/[Spring Initializr]
+or https://spring.io/tools[Spring Tool Suite]
+or https://www.jetbrains.com/idea/[IntelliJ IDEA Ultimate]
+or https://netbeans.apache.org/[NetBeans IDE] with
+https://github.com/AlexFalappa/nb-springboot[Spring Boot Plugin].
+
+We are going to use https://start.spring.io/[Spring Initializr] and provide the following project metadata.
+
+* *Project*: Maven Project
+* *Language*: Java
+* *Spring Boot*: 3.2.3
+* *Project Metadata*:
+** *Group*: com.sivalabs
+** *Artifact*: spring-boot-helloworld
+** *Name*: spring-boot-helloworld
+** *Description*: Spring Boot HelloWorld
+** *Package name*: com.sivalabs.helloworld
+** *Packaging*: jar
+** *Java*: 21
+* Click on *ADD DEPENDENCIES* and add *Spring Web* starter.
+* Click on *GENERATE*
+
+The generated Spring Boot application will be downloaded. We can extract the zip file and
+import the project into our IDE. I will be using IntelliJ IDEA, but you can use any of your favorite IDE.
+
+=== Simple REST API using Spring Boot
+We are going to build a simple REST API with a single endpoint *GET /api/hello?name={name}* which returns
+the JSON response *{ "greeting" : "Hello {name}"}*.
+Also, we don't want to hard-code the greeting prefix *"Hello"*, we want it to be configurable.
+
+Let us start with creating response model class `GreetingResponse` as follows:
+
+[source,java]
+.src/main/java/com/sivalabs/helloworld/GreetingResponse.java
+----
+package com.sivalabs.helloworld;
+
+record GreetingResponse(String greeting){}
+----
+
+Next, create `ApplicationProperties` class to bind all the application configuration properties.
+
+[source,java]
+.src/main/java/com/sivalabs/helloworld/ApplicationProperties.java
+----
+package com.sivalabs.helloworld;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
+
+@ConfigurationProperties(prefix = "app") <1>
+public record ApplicationProperties(
+    @DefaultValue("Hello") String greeting,  <2>
+    @DefaultValue("World") String defaultName) {
+}
+----
+<1> We are binding the properties in `application.properties` file with common prefix `"app."`
+into `ApplicationProperties` fields.
+<2> We are using `@DefaultValue` annotation to provide default values for the properties.
+
+Create `GreetingService` and implement `sayHello(String name)` method as follows:
+
+[source,java]
+.src/main/java/com/sivalabs/helloworld/GreetingService.java
+----
+package com.sivalabs.helloworld;
+
+import org.springframework.stereotype.Service;
+
+@Service <1>
+public class GreetingService {
+    private final ApplicationProperties properties;
+
+    public GreetingService(ApplicationProperties properties) { <2>
+        this.properties = properties;
+    }
+
+    public String sayHello(String name) {
+        var s = name == null? properties.defaultName(): name;
+        return String.format("%s %s", properties.greeting(), s);
+    }
+}
+----
+<1> Declare `GreetingService` as Spring bean using `@Service` annotation.
+<2> Injecting `ApplicationProperties` as a dependency of `GreetingService` bean.
+
+Create `HelloWorldController` and implement the `GET /api/hello` API endpoint as follows:
+
+[source,java]
+.src/main/java/com/sivalabs/helloworld/HelloWorldController.java
+----
+package com.sivalabs.helloworld;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController <1>
+class HelloWorldController {
+    private static final Logger log =
+            LoggerFactory.getLogger(HelloWorldController.class);
+    private final GreetingService greetingService;
+
+    HelloWorldController(GreetingService greetingService) {
+        this.greetingService = greetingService;
+    }
+
+    @GetMapping("/api/hello") <2>
+    GreetingResponse sayHello(
+            @RequestParam(name = "name", required = false) String name) {
+        log.info("Say Hello to Name: {}", name);
+        String greeting = greetingService.sayHello(name);
+        return new GreetingResponse(greeting);
+    }
+}
+----
+<1> Declares the class as Spring Controller with request handler methods.
+<2> The `sayHello()` method is annotated with `@GetMapping("/api/hello")` indicating it as
+a request handler method for `HTTP GET /api/hello` URL.
+
+Let's configure the properties in `application.properties` as follows:
+
+[source,properties]
+.src/main/resources/application.properties
+----
+app.greeting=Hello
+app.default-name=World
+----
+
+Finally, we need to enable the configuration properties binding using `@EnableConfigurationProperties` as follows:
+
+[source,java]
+.src/main/java/com/sivalabs/helloworld/SpringBootHelloWorldApplication.java
+----
+package com.sivalabs.helloworld;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+@SpringBootApplication
+@EnableConfigurationProperties({ApplicationProperties.class}) <1>
+//@ConfigurationPropertiesScan <2>
+public class SpringBootHelloWorldApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringBootHelloWorldApplication.class, args);
+    }
+}
+----
+<1> Explicitly enabling the configuration properties binding for `ApplicationProperties` class.
+If we have more such configuration binding classes, we can list them all.
+<2> Instead of explicitly specifying all the configuration binding classes using `@EnableConfigurationProperties`
+we can use `@ConfigurationPropertiesScan` annotation to scan for all the classes that are annotated
+with `@ConfigurationProperties`.
+
+We can run the application from IDE by simply running `main()` method in `SpringBootHelloWorldApplication`.
+
+We can verify the API endpoint using cURL as follows:
+
+[source,shell]
+----
+$ curl http://localhost:8080/api/hello
+{"greeting":"Hello World"}
+
+$ curl http://localhost:8080/api/hello?name=Siva
+{"greeting":"Hello Siva"}
+----
+
+Congratulations!!!. We wrote our first Spring Boot application.
+
+=== Run Application using Maven and Gradle
+Spring Boot provides Maven and Gradle plugins with the ability to run the application without having
+to build the artifact (jar or war).
+
+Maven:
+
+[source,bash]
+----
+./mvnw spring-boot:run
+----
+
+Gradle:
+
+[source,bash]
+----
+./gradlew bootRun
+----
+
+=== Run Application as FatJar
+We can build the Spring Boot application as a fat jar and run it using `java -jar` command.
+
+*Maven:*
+
+[source,bash]
+----
+$ ./mvnw clean package
+$ java -jar target/spring-boot-helloworld-0.0.1-SNAPSHOT.jar
+----
+
+*Gradle:*
+
+[source,bash]
+----
+$ ./gradlew clean build
+$ java -jar build/libs/spring-boot-helloworld-0.0.1-SNAPSHOT.jar
+----
+
+Now we should be able to call API using `curl http://localhost:8080/api/hello`
+
+=== Run Application as Docker Container
+Spring Boot Maven/Gradle Plugins provide the ability to build docker image using
+https://buildpacks.io/[Cloud Native Buildpacks] without having to create `Dockerfile`.
+
+Once we have Docker installed and running on our machine, we can build a Docker image of
+our Spring Boot application using Spring Boot Maven/Gradle plugins as follows:
+
+[source,bash]
+----
+#Maven
+$ ./mvnw spring-boot:build-image -Dspring-boot.build-image.imageName=YOUR_DOCKER_USERNAME/spring-boot-helloworld
+
+#Gradle
+$ ./gradlew bootBuildImage --imageName=YOUR_DOCKER_USERNAME/spring-boot-helloworld
+----
+
+Now we can start a container from the image and test the API endpoint as follows:
+
+[source,bash]
+----
+$ docker run -p 8080:8080 YOUR_DOCKER_USERNAME/spring-boot-helloworld -d
+$ curl http://localhost:8080/api/hello
+----
+
+For more customization options, please refer:
+
+* https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/htmlsingle/[Spring Boot Maven Plugin]
+* https://docs.spring.io/spring-boot/docs/current/gradle-plugin/reference/htmlsingle/[Spring Boot Gradle Plugin]
+
+[TIP]
+====
+https://github.com/GoogleContainerTools/jib[Jib] is an alternative to building a container image
+without requiring a Docker daemon running.
+====
+
+We have just scratched the surface of Spring Boot by quickly creating a simple REST API application
+and running it in various ways.
+We are going to explore all the underlying concepts of Spring Boot in detail in the upcoming chapters.
+
+=== Summary
+In this chapter, we took a glance at what are the top features of Spring Boot,
+and then we created a simple application. We learned how to implement a simple REST API endpoint.
+Finally, we learned how to run application in various ways using
+maven/gradle plugins, as a fat jar and as a docker container.
